@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "app-scaling-keda"
+version = "0.1.0"
+description = "demo app for sending and receiving Azure Service Bus Queue messages"
+authors = ["Dani Wold Kristiansen <dani.wold.kristiansen@intility.no>"]
+readme = "README.md"
+packages = [{include = "app_scaling_keda"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+asyncio = "^3.4.3"
+azure-servicebus = "^7.8.1"
+pydantic = "^1.10.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

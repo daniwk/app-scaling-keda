@@ -1,0 +1,42 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: sb-queue-receiver-scaler
+  namespace: autoscale-demo
+spec:
+  scaleTargetRef:
+    apiVersion:    apps/v1 # Optional. Default: apps/v1
+    kind:          Deployment       # Optional. Default: Deployment
+    name:          sb-queue-receiver        # Mandatory. Must be in the same namespace as the ScaledObject
+    # envSourceContainerName: new-cdr-poller-costusage-dev        # Optional. Default: .spec.template.spec.containers[0]
+  pollingInterval:  15                               # Optional. Default: 30 seconds
+  cooldownPeriod:   30                              # Optional. Default: 300 seconds
+  idleReplicaCount: 0                                # Optional. Default: ignored, must be less than minReplicaCount 
+  minReplicaCount:  0                                # Optional. Default: 0
+  maxReplicaCount:  50                              # Optional. Default: 100
+  fallback:                                          # Optional. Section to specify fallback options
+    failureThreshold: 3                              # Mandatory if fallback section is included
+    replicas: 6                                      # Mandatory if fallback section is included
+  advanced:                                          # Optional. Section to specify advanced options
+    restoreToOriginalReplicaCount: true       # Optional. Default: false
+    # horizontalPodAutoscalerConfig:                   # Optional. Section to specify HPA related options
+    #   name: cdr-poller-costusage-dev                   # Optional. Default: keda-hpa-{scaled-object-name}
+    #   behavior:                                      # Optional. Use to modify HPA's scaling behavior
+    #     scaleDown:
+    #       stabilizationWindowSeconds: 300
+    #       policies:
+    #       - type: Percent
+    #         value: 100
+    #         periodSeconds: 15
+  triggers: # {list of triggers to create jobs}
+  - type: azure-servicebus
+    metadata:
+      # Required: queueName OR topicName and subscriptionName
+      queueName: autoscalequeue
+      # Optional, required when pod identity is used
+      namespace: MyNameSpace5352 # Change this 
+      # Optional, can use TriggerAuthentication as well
+      connectionFromEnv: sb_connection_string.txt # This must be a connection string for a queue itself, and not a namespace level (e.g. RootAccessPolicy) connection string [#215](https://github.com/kedacore/keda/issues/215)
+      # Optional
+      messageCount: "1" # Optional. Count of messages to trigger scaling on. Default: 5 messages
+      activationMessageCount: "1"
