@@ -14,7 +14,7 @@ At Intility, we have successfully implemented KEDA to autoscale our [Mobile Oper
 
 This article will show how you install and use KEDA to autoscale an app receiving messages from a Service Bus Queue. As Kubernetes is complex, we will use some time setting up our local environment and explaining what's going on. If you prefer the quick and dirty to get it up and running, please visit the [Github repository](https://github.com/daniwk/app-scaling-keda).
 
-[insert sketch of what we are trying to do]
+![app-diagram](logo/app-diagram.png)
 
 # Prequisites
 Okay. The list of prerequisites below is _a lot_. Each tool is not strictly necessary either, but they will allow you to use more time on fun stuff, like testing KEDA, and less time on time-consuming stuff, like "how do you setup a built-in registry in my cluster again?".
@@ -35,17 +35,17 @@ To install KEDA you will need to have access to a k8s cluster with cluster-admin
 1. Install kind: `brew install kind`. See [docs](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) for other install methods.
 2. Install [docker](https://www.docker.com/products/docker-desktop/).
 3. Install ctlptl: `brew install tilt-dev/tap/ctlptl`
-3. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml`
 4. Install kubectl: `brew install kubectl`. See [docs](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/) for other install methods.
+5. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml`
 
-[Screenshot of successfully created cluster]
+![cluster-create](logo/cluster-create.gif)
 
 ## (Optional) View and manage cluster with k9s
 `k9s` offers a bit more user-friendly interface than the standard `kubectl` CLI to your Kubernetes cluster.
 - Install k9s: `brew install derailed/k9s/k9s`
 - Connect to your newly created cluster: `k9s`
 
-[screenshot of successfully connected cluster]
+![k9s](logo/k9s.png)
 
 ## Tilt
 Tilt deserves a blog post in its own. It's a toolkit which greatly improves the local development of Kubernetes apps. It provides a tight feedback loop by automatically building your Dockerfile and deploying it to your local k8s cluster live with every code edit, in addition to a whole lot more. We'll use it here to skip the docker build and push process. 
@@ -108,15 +108,13 @@ asyncio.run(main())
 ## 1. Deploy the demo app
 To deploy the demo app you simply run `tilt up` from the root of the directory. Press `space` and you will be sent to the Tilt UI which shows the resources being provisioned. You can also view the logs from the sender app by selecting `sq-queue-sender` and the subsequent logs from the receiver app by selecting the `sb-queue-receiver`.
 
-[Screenshot/gif]
-
 You can also view your resources by using `k9s`. You can use the following commands to view your resource:
 - View pods in namespace: `:namespace` and selecting `autoscale-demo`.
 - View deployments: `:deploy`
 - View jobs: `:job`
 - View logs from a resource: select relevant resource and press `l`
 
-[screenshot]
+![tilt-up](logo/tilt-up.gif)
 
 ## 2. Use KEDA to scale our app
 Put simply, KEDA scales apps by monitoring an external source and feed those metrics in to the [Horizontal Pod Autoscaler and its external metric capability](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-metrics-apis). Thus, KEDA extends existing functionality in Kubernetes, Like other Kubernetes tools also does. 
@@ -125,7 +123,7 @@ Specifically, we will:
 1. Install KEDA in our cluster which will provide functionality for monitoring external source and ready-made integrations with Azure Service Bus Queues.
 2. Create a `ScaledObject`, a KEDA primitive, which will provide connection details to our Azure Service Bus Queue. More importantly, it will create and manage the HPA which will handle the actual scaling of our receiver app. The `ScaledObject` will help us scale our app down to zero pods when the message queue is empty and scale out our app as more message arrives in our queue.
 
-[draw.io on how KEDA works]
+![keda-diagram](logo/keda-diagram.png)
 
 ### Install KEDA
 Install KEDA by running `kubectl kustomize deploy/keda --enable-helm | kubectl apply -f -`.
@@ -185,15 +183,13 @@ Deploy it by running the following command: `kubectl apply -f deploy/autoscale/s
 
 Now switch to view your deployments in k9s (`:deploy`). Under the READY column you see that the receiver app has been scaled down to run zero pods. This is controlled by the ScaledObjects `spec.minReplicaCount` parameter which we configured above. To see the autoscaling in action, simply trigger an update for the sb-queue-sender in the Tilt UI. This will post 1000 new messages in the Service Bus Queue. After a few seconds, KEDA will see that there is 1000 unhandled messages in the queue and feed this data to the HPA, which will scale our receiver app. The scaling of our app will be visible in the READY column (shows the number of ready pods and total pods) or by pressing enter on the `sb-queue-receiver` deployment
 
-[gif]
+![autoscale-demo](logo/autoscale-demo.gif)
 
-## Play around with KEDA
+## 3. Play around with KEDA
 1. Change number of messages produces by sender app by editing the `NR_MESSAGES` parameter in `deploy/app/configmap-sender.yaml`
 2. Change the handle time for each message by changing the `WAIT_TIME` parameter in `deploy/app/configmap-receiver.yaml`
 2. Run the sender job again by pressing the `trigger update` button next to sq-queue-sender in Tilt UI.
 3. Use `k9s` to watch KEDA scale out the receiver app (find `sb-queue-receiver` under deployments by using `:deploy` and watch the READY column).
-
-[screenshot/gif]
 
 ## Clean up resources
 1. Delete kind by running: `ctlptl delete cluster kind`
@@ -205,12 +201,6 @@ We have now seen how we can use KEDA to autoscale our Kubernetes apps based on e
 KEDA delivers on its promise to be a single-purpose and lightweight component. As we have seen, from the developers viewpoint, implementation of autoscaling is simple. Additionally, KEDA offers a large number of ready-made [scalers](https://keda.sh/docs/2.9/scalers/).
 
 But you should plan ahead with your platform team before rolling it out in production. First off, it's important to define resource request and limits for your workloads. This helps the Kubernetes scheduler schedule your pods without [bringing down your production environment](https://engineering.intility.com/article/guide-to-high-availability-in-kubernetes#resources-and-scheduling). Secondly, if your workloads need to scale out to 50+ replicas you should consider setting up a dedicated node(s) to separate more stable production workloads from the workloads with surges. Implementing autoscaling on your k8s cluster could also be good idea. 
-
-- keda is working well
-- idempotency, optimize own code
-- deployments vs jobs
-- limits and request are integral
-- plan ahead with your platform team
 
 # Resources
 - [Horizontal Pod Autoscaling, Kubernetes doc](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#how-does-a-horizontalpodautoscaler-work)
