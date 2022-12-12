@@ -19,7 +19,7 @@ docker_build(
     only=['./app'],
     ignore=['./app/receiver.py'],
     live_update=[
-        sync('./app/', '/app/app/'),
+        sync('.', '/app/'),
         run(
             'poetry.lock pyproject.toml ./ && pip install --upgrade pip --user',
             trigger=['./pyproject.toml']
@@ -29,6 +29,11 @@ docker_build(
 k8s_yaml(kustomize('deploy/app'))
 k8s_resource(
     'sb-queue-receiver',
-    port_forwards='8000:8000',
-    labels=['receiver']
+    labels=['receiver'],
+    objects=['autoscale-config-receiver']
+)
+k8s_resource(
+    'sb-queue-sender',
+    labels=['sender'],
+    objects=['autoscale-config-sender']
 )

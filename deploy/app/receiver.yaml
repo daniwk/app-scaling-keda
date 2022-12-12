@@ -19,7 +19,7 @@ spec:
       - name: sb-queue-receiver
         envFrom:
           - configMapRef:
-              name: autoscale-config
+              name: autoscale-config-receiver
           - secretRef:
               name: autoscale-credz
         image: sb-queue-receiver

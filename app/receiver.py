@@ -8,6 +8,7 @@ from azure.servicebus.aio import ServiceBusClient, ServiceBusReceiver, AutoLockR
 
 CONNECTION_STR = settings.SERVICEBUS_CONNECTION_STR
 QUEUE_NAME = settings.SERVICEBUS_QUEUE_NAME
+WAIT_TIME = int(settings.WAIT_TIME)
 
 
 async def main():
@@ -28,7 +29,7 @@ async def main():
             ) as receiver:
                 async for message in receiver:
                     lock_renewal.register(receiver, message, max_lock_renewal_duration=60)
-                    time.sleep(5)
+                    time.sleep(WAIT_TIME)
                     await receiver.complete_message(message)
                     print("Handled message: " + str(message))
 

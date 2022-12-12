@@ -13,7 +13,7 @@ spec:
   cooldownPeriod:   30                              # Optional. Default: 300 seconds
   idleReplicaCount: 0                                # Optional. Default: ignored, must be less than minReplicaCount 
   minReplicaCount:  0                                # Optional. Default: 0
-  maxReplicaCount:  50                              # Optional. Default: 100
+  maxReplicaCount:  10                                # Optional. Default: 100
   fallback:                                          # Optional. Section to specify fallback options
     failureThreshold: 3                              # Mandatory if fallback section is included
     replicas: 6                                      # Mandatory if fallback section is included

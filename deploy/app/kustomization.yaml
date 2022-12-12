@@ -3,9 +3,10 @@ kind: Kustomization
 
 resources:
 - namespace.yaml
-- configmap.yaml
 - receiver.yaml
+- configmap-receiver.yaml
 - sender.yaml
+- configmap-sender.yaml
 
 secretGenerator:
 - name: autoscale-credz

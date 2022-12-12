@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autoscale-config-sender
+  namespace: autoscale-demo
+data:
+  SERVICEBUS_QUEUE_NAME: "autoscalequeue"
+  NR_MESSAGES: "1000"
