@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sb-queue-receiver
+  namespace: autoscale-demo
+  labels:
+    app: sb-queue-receiver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sb-queue-receiver
+  template:
+    metadata:
+      labels:
+        app: sb-queue-receiver
+    spec:
+      containers:
+      - name: sb-queue-receiver
+        envFrom:
+          - configMapRef:
+              name: autoscale-config-receiver
+          - secretRef:
+              name: autoscale-credz
+        image: sb-queue-receiver
+        livenessProbe:
+          exec:
+            command:
+            - ls
+        readinessProbe:
+          exec:
+            command:
+            - ls
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "300m"
+          limits:
+            memory: "200Mi"
+            cpu: "300m"
