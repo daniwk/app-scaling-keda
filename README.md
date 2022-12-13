@@ -198,6 +198,8 @@ KEDA delivers on its promise to be a single-purpose and lightweight component. A
 
 But you should plan ahead with your platform team before rolling it out in production. First off, it's important to define resource request and limits for your workloads. This helps the Kubernetes scheduler schedule your pods without [bringing down your production environment](https://engineering.intility.com/article/guide-to-high-availability-in-kubernetes#resources-and-scheduling). Secondly, if your workloads need to scale out to 50+ replicas you should consider setting up a dedicated node(s) to separate more stable production workloads from the workloads with surges. Implementing autoscaling on your k8s cluster could also be good idea. 
 
+Additionally, we recommend reading the KEDA docs, specifically the [KEDA Concepts](https://keda.sh/docs/2.9/concepts/scaling-deployments/) and the comments about [long-running executions](https://keda.sh/docs/2.9/concepts/scaling-deployments/#long-running-executions). In short, if you use k8s `deployments` with long-running executions, KEDA may scale down a replica which isn't finished with it's processing. For these scenarios it's recommended to tap into the lifecycle hooks or change the app to run k8s `Job` instead.
+
 # Resources
 - [Horizontal Pod Autoscaling, Kubernetes doc](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#how-does-a-horizontalpodautoscaler-work)
 - [KEDA docs](https://keda.sh/docs/2.9/)
