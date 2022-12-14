@@ -6,7 +6,7 @@ Some workloads experience high variations in load and usage. Here we'll take a c
 ## Cloud-native autoscaling with KEDA
 Scaling apps and workloads is not a new phenomena for software engineers. Some may experience that their apps has high usage surges (Ticketmaster anyone). Others have workers and jobs with varying throughput because of their business-logic. 
 
-As more and more workloads run in Kubernetes, many software engineers has probably appreciated how easy it is to scale workloads in Kubernetes using the built-in `Horizontal Pod Autoscaler`. The HPA allow you to automatically scale the number of pods your app are running based on resource metrics such CPU and memory usage. This works fine for some scenarios, but in other cases the autoscaling should optimally be more proactive. 
+As more and more workloads run in Kubernetes, many software engineers has probably appreciated how easy it is to scale workloads in Kubernetes using the built-in `Horizontal Pod Autoscaler` (HPA). The HPA allow you to automatically scale the number of pods your app are running based on resource metrics such CPU and memory usage. This works fine for some scenarios, but in other cases the autoscaling should optimally be more proactive. 
 
 Kubernetes Event-driven Autoscaling (KEDA) extends the capabilities of the HPA and allows software engineers to scale workloads on external metrics, such as number of messages in a queue, files in a blob storage, Elasticsearch queries and many more, in a simple and cloud-native way. As the name implies, it fits well with workloads running in an event-driven architecture. 
 
@@ -22,6 +22,7 @@ Okay. The list of prerequisites below is _a lot_. Each tool is not strictly nece
 - 🐳 `Docker`. Running kind and building container images.
 - 🐄 `ctlptl`. CLI for declarative setup of k8s cluster.
 - ⌨️ `kubectl`. CLI to interact with k8s cluster.
+- ⎈ `helm`. K8s package manager. Used here to install pre-made KEDA package.
 - 🧑‍💻 `k9s`. User-friendly interface to k8s cluster.
 - 🛠️ `Tilt`. Toolkit to simplify local development of cloud-native apps.
 - 📨 Access to `Azure` account to setup and use Service Bus.
@@ -34,13 +35,14 @@ To install KEDA you will need to have access to a k8s cluster with cluster-admin
 
 1. Install kind: `brew install kind`. See [docs](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) for other install methods.
 2. Install [docker](https://www.docker.com/products/docker-desktop/).
-3. Install ctlptl: `brew install tilt-dev/tap/ctlptl`
-4. Install kubectl: `brew install kubectl`. See [docs](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/) for other install methods.
-5. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml`
+3. Install ctlptl: `brew install tilt-dev/tap/ctlptl`. See [docs](https://github.com/tilt-dev/ctlptl#how-do-i-install-it) for other install methods.
+4. Install kubectl: `brew install kubectl`. See [docs](https://kubernetes.io/docs/tasks/tools/.install-kubectl-macos/) for other install methods.
+5. Install Helm: `brew install helm`. See [docs](https://helm.sh/docs/intro/install/) for other install methods.
+5. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml`. This will create a local k8s cluster with a built-in container registry.
 
 ![cluster-create](logo/cluster-create.gif)
 
-## (Optional) View and manage cluster with k9s
+## View and manage cluster with k9s
 `k9s` offers a bit more user-friendly interface than the standard `kubectl` CLI to your Kubernetes cluster.
 - Install k9s: `brew install derailed/k9s/k9s`
 - Connect to your newly created cluster: `k9s`
@@ -49,18 +51,19 @@ To install KEDA you will need to have access to a k8s cluster with cluster-admin
 
 ## Tilt
 Tilt deserves a blog post in its own. It's a toolkit which greatly improves the local development of Kubernetes apps. It provides a tight feedback loop by automatically building your Dockerfile and deploying it to your local k8s cluster live with every code edit, in addition to a whole lot more. We'll use it here to skip the docker build and push process. 
-- Install it by: `curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash`
+- Install it by: `curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash`. See [docs](https://docs.tilt.dev/) for other install methods. 
 
 ## Provision Service Bus Namespace, Queue and Topic Subscription
 Log into your Azure account. If you don't have any, sign up to a free subscription [here](https://azure.microsoft.com/en-us/free/). 
 
 Use the Azure Cloud Shell or AZ CLI to get going:
-1. Create resource group: `az group create --name rg-autoscale-dev --location norwayeast`
-2. Randomize Service Bus namespace name: `namespaceName=MyNameSpace$RANDOM`
-3. Create Service Bus namespace by using the AZ CLI in the cloud shell: `az servicebus namespace create --resource-group rg-autoscale-dev --name $namespaceName --location norwayeast`
-4. Create Service Bus Queue: `az servicebus queue create --resource-group rg-autoscale-dev --namespace-name $namespaceName --name autoscalequeue`
-6. Get the connection string to the Service Bus Namespace: `az servicebus namespace authorization-rule keys list --resource-group rg-autoscale-dev --namespace-name $namespaceName --name RootManageSharedAccessKey --query primaryConnectionString --output tsv`
-7. Switch to your local terminal and save the output from the Cloud Shell in a file by running: `echo -n '<OUTPUT_FROM_CLOUD_SHELL>' > ./deploy/app/sb_connection_string.txt` in the cloned project directory.
+1. (If not Azure Cloud Shell) Install AZ CLI: `brew install azure-cli`. See [docs](https://kubernetes.io/docs/tasks/tools/) for other install methods. Run `az login` to setup account.
+2. Create resource group: `az group create --name rg-autoscale-dev --location norwayeast`
+3. Randomize Service Bus namespace name: `sbNamespaceName=MyNameSpace$RANDOM`
+4. Create Service Bus namespace by using the AZ CLI in the cloud shell: `az servicebus namespace create --resource-group rg-autoscale-dev --name $sbNamespaceName --location norwayeast`
+5. Create Service Bus Queue: `az servicebus queue create --resource-group rg-autoscale-dev --namespace-name $sbNamespaceName --name autoscalequeue`
+7. Get the connection string to the Service Bus Namespace: `az servicebus namespace authorization-rule keys list --resource-group rg-autoscale-dev --namespace-name $sbNamespaceName --name RootManageSharedAccessKey --query primaryConnectionString --output tsv`
+8. Switch to your local terminal and save the output from the Cloud Shell in a file by running: `echo -n '<OUTPUT_FROM_CLOUD_SHELL>' > ./deploy/app/sb_connection_string.txt` in the cloned project directory.
 
 # Use KEDA to autoscale an app based on Azure Service Bus Topic
 Now that our local environment is up and running, we are ready to deploy our demo app and use KEDA to autoscale it. The demo app consists of:
@@ -85,7 +88,7 @@ async def main():
             ) as receiver:
                 async for message in receiver:
                     lock_renewal.register(receiver, message, max_lock_renewal_duration=60)
-                    time.sleep(5)
+                    await asyncio.sleep(5)
                     await receiver.complete_message(message)
                     print("Handled message: " + str(message))
 
@@ -106,7 +109,7 @@ asyncio.run(main())
 - necessary k8s config to run the app (namespace, configmap and secret)
 
 ## 1. Deploy the demo app
-To deploy the demo app you simply run `tilt up` from the root of the directory. Press `space` and you will be sent to the Tilt UI which shows the resources being provisioned. You can also view the logs from the sender app by selecting `sq-queue-sender` and the subsequent logs from the receiver app by selecting the `sb-queue-receiver`.
+To deploy the demo app you simply run `tilt up` from the root of the directory. Press `space` and you will be sent to the Tilt UI which shows the resources being provisioned. You can also view the logs from the sender app by selecting `sq-queue-sender` and the subsequent logs from the receiver app by selecting the `sb-queue-receiver`. You don't have to wait for apps to be finished (turn green) before moving on. 
 
 You can also view your resources by using `k9s`. You can use the following commands to view your resource:
 - View pods in namespace: `:namespace` and selecting `autoscale-demo`.
