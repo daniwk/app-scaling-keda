@@ -1,5 +1,4 @@
 import asyncio
-import time
 from app.config import settings
 
 from azure.servicebus import TransportType
@@ -8,7 +7,7 @@ from azure.servicebus.aio import ServiceBusClient, ServiceBusReceiver, AutoLockR
 
 CONNECTION_STR = settings.SERVICEBUS_CONNECTION_STR
 QUEUE_NAME = settings.SERVICEBUS_QUEUE_NAME
-WAIT_TIME = int(settings.WAIT_TIME)
+WAIT_TIME = settings.WAIT_TIME
 
 
 async def main():
@@ -29,7 +28,7 @@ async def main():
             ) as receiver:
                 async for message in receiver:
                     lock_renewal.register(receiver, message, max_lock_renewal_duration=60)
-                    time.sleep(WAIT_TIME)
+                    await asyncio.sleep(WAIT_TIME)
                     await receiver.complete_message(message)
                     print("Handled message: " + str(message))
 
