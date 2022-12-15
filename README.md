@@ -38,7 +38,7 @@ To install KEDA you will need to have access to a k8s cluster with cluster-admin
 3. Install ctlptl: `brew install tilt-dev/tap/ctlptl`. See [docs](https://github.com/tilt-dev/ctlptl#how-do-i-install-it) for other install methods.
 4. Install kubectl: `brew install kubectl`. See [docs](https://kubernetes.io/docs/tasks/tools/.install-kubectl-macos/) for other install methods.
 5. Install Helm: `brew install helm`. See [docs](https://helm.sh/docs/intro/install/) for other install methods.
-5. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml`. This will create a local k8s cluster with a built-in container registry.
+5. Create a Kubernetes cluster: `ctlptl apply -f deploy/k8s/kind.yaml && kubectl apply -k deploy/k8s`. This will create a local k8s cluster with a built-in container registry and k8s metrics server.
 
 ![cluster-create](logo/cluster-create.gif)
 
@@ -178,14 +178,12 @@ spec:
 
 Deploy it by running the following command: `kubectl apply -f deploy/autoscale/scaledobject.yaml`. To view this resource in k9s simply type `:scaledobject` and press `d`. If type `:hpa` you will also see that KEDA has deployed a HorizontalPodAutoscaler resource.
 
-[screenshot]
-
-Now switch to view your deployments in k9s (`:deploy`). Under the READY column you see that the receiver app has been scaled down to run zero pods. This is controlled by the ScaledObjects `spec.minReplicaCount` parameter which we configured above. To see the autoscaling in action, simply trigger an update for the sb-queue-sender in the Tilt UI. This will post 1000 new messages in the Service Bus Queue. After a few seconds, KEDA will see that there is 1000 unhandled messages in the queue and feed this data to the HPA, which will scale our receiver app. The scaling of our app will be visible in the READY column (shows the number of ready pods and total pods) or by pressing enter on the `sb-queue-receiver` deployment
+Now switch to view your deployments in k9s (`:deploy`). Under the READY column you see that the receiver app has been scaled down to run zero pods. This is controlled by the ScaledObjects `spec.minReplicaCount` parameter which we configured above. To see the autoscaling in action, simply trigger an update for the sb-queue-sender in the Tilt UI by pressing the round arrow/refresh button. This will post 1000 new messages in the Service Bus Queue. After a few seconds, KEDA will see that there is 1000 unhandled messages in the queue and feed this data to the HPA, which will scale our receiver app. The scaling of our app will be visible in the READY column (shows the number of ready pods and total pods) or by pressing enter on the `sb-queue-receiver` deployment
 
 ![autoscale-demo](logo/autoscale-demo.gif)
 
 ## 3. Play around with KEDA
-1. Change number of messages produces by sender app by editing the `NR_MESSAGES` parameter in `deploy/app/configmap-sender.yaml`
+1. Change the number of messages produced by the sender app by editing the `NR_MESSAGES` parameter in `deploy/app/configmap-sender.yaml`
 2. Change the handle time for each message by changing the `WAIT_TIME` parameter in `deploy/app/configmap-receiver.yaml`
 2. Run the sender job again by pressing the `trigger update` button next to sq-queue-sender in Tilt UI.
 3. Use `k9s` to watch KEDA scale out the receiver app (find `sb-queue-receiver` under deployments by using `:deploy` and watch the READY column).
